@@ -70,17 +70,11 @@ class KNearestNeighbor(object):
         """
         num_test = X.shape[0]
         num_train = self.X_train.shape[0]
-        dists = np.zeros((num_test, num_train))
+        dists = np.zeros((num_test, num_train))# 直接创建一个距离阵列，后续填充
         for i in range(num_test):
             for j in range(num_train):
-                #####################################################################
-                # TODO:                                                             #
-                # Compute the l2 distance between the ith test point and the jth    #
-                # training point, and store the result in dists[i, j]. You should   #
-                # not use a loop over dimension, nor use np.linalg.norm().          #
-                #####################################################################
                 delta_vec = X[i] - self.X_train[j]
-                dists[i, j] = np.sqrt(np.sum(delta_vec * delta_vec))
+                dists[i, j] = np.sqrt(delta_vec.dot(delta_vec))
         return dists
 
     def compute_distances_one_loop(self, X):
@@ -94,16 +88,11 @@ class KNearestNeighbor(object):
         num_train = self.X_train.shape[0]
         dists = np.zeros((num_test, num_train))
         for i in range(num_test):
-            #######################################################################
-            # TODO:                                                               #
-            # Compute the l2 distance between the ith test point and all training #
-            # points, and store the result in dists[i, :].                        #
-            # Do not use np.linalg.norm().                                        #
-            #######################################################################
-            # 这里会广播成 (num_train, D)，刚开始手写时最容易在这个维度上搞混
-            delta_matrix = self.X_train - X[i]
-            dists[i, :] = np.sqrt(np.sum(delta_matrix * delta_matrix, axis=1))
+            delta_matrix = self.X_train - X[i]  # 训练数据矩阵减去测试数据的第i行，得到一个差值矩阵,也就是第i个测试数据与所有训练数据的差值
+            dists[i,:] = np.sqrt(np.sum(delta_matrix * delta_matrix,axis=1)) #逐元素相乘（平方），然后再按列求和，最后开方得到距离
         return dists
+        
+
 
     def compute_distances_no_loops(self, X):
         """
@@ -115,25 +104,11 @@ class KNearestNeighbor(object):
         num_test = X.shape[0]
         num_train = self.X_train.shape[0]
         dists = np.zeros((num_test, num_train))
-        #########################################################################
-        # TODO:                                                                 #
-        # Compute the l2 distance between all test points and all training      #
-        # points without using any explicit loops, and store the result in      #
-        # dists.                                                                #
-        #                                                                       #
-        # You should implement this function using only basic array operations; #
-        # in particular you should not use functions from scipy,                #
-        # nor use np.linalg.norm().                                             #
-        #                                                                       #
-        # HINT: Try to formulate the l2 distance using matrix multiplication    #
-        #       and two broadcast sums.                                         #
-        #########################################################################
-        test_sq = np.sum(X * X, axis=1, keepdims=True)
-        train_sq = np.sum(self.X_train * self.X_train, axis=1)
-        cross_term = X.dot(self.X_train.T)
-        sq_dist = test_sq + train_sq - 2.0 * cross_term
-        np.maximum(sq_dist, 0.0, out=sq_dist)  # 数值误差下会冒出很小的负数
-        dists = np.sqrt(sq_dist)
+        #这里我们使用numpy的广播机制来计算
+        X_train_shape = self.X_train.reshape(1, num_train, -1) #将训练数据重塑为（1，num_train，D）的形状
+        X_shape = X.reshape(num_test, 1, -1) #将测试数据重塑为（num_test，1，D）的形状
+        delta_matrix = X_train_shape - X_shape #利用广播机制计算差值矩阵，得到一个（num_test，num_train，D）的矩阵
+        dists = np.sqrt(np.sum(delta_matrix * delta_matrix,axis=2)) #在最后一个维度上求和，得到一个（num_test，num_train）的矩阵
         return dists
 
     def predict_labels(self, dists, k=1):
@@ -154,25 +129,11 @@ class KNearestNeighbor(object):
         for i in range(num_test):
             # A list of length k storing the labels of the k nearest neighbors to
             # the ith test point.
+            if i < 3:
+                idx = np.argsort(dists[i])[0]
+                print(f"Test {i} closest train index: {idx}, pred label: {self.y_train[idx]}")
             closest_y = []
-            #########################################################################
-            # TODO:                                                                 #
-            # Use the distance matrix to find the k nearest neighbors of the ith    #
-            # testing point, and use self.y_train to find the labels of these       #
-            # neighbors. Store these labels in closest_y.                           #
-            # Hint: Look up the function numpy.argsort.                             #
-            #########################################################################
-            nearest_train_idx = np.argsort(dists[i])[:k]
-            closest_y = self.y_train[nearest_train_idx].astype(np.int64)
-
-            #########################################################################
-            # TODO:                                                                 #
-            # Now that you have found the labels of the k nearest neighbors, you    #
-            # need to find the most common label in the list closest_y of labels.   #
-            # Store this label in y_pred[i]. Break ties by choosing the smaller     #
-            # label.                                                                #
-            #########################################################################
-            vote_count = np.bincount(closest_y)
-            y_pred[i] = np.argmax(vote_count)
-
+            closest_y = self.y_train[np.argsort(dists[i])[:k]] #对第i行(第i个测试数据)的距离进行排序，取前k个索引，然后用这些索引从训练标签中取出对应的标签
+            vote_count = np.bincount(closest_y.astype(np.int64))#统计closest_y中每个标签的出现次数，返回一个数组，其中第i个元素表示标签i出现的次数
+            y_pred[i] = np.argmax(vote_count) #统计每个标签的出现次数，取出现次数最多的标签作为预测结果，如果有多个标签出现次数相同，np.argmax会返回第一个出现的最大值的索引，也就是较小的标签
         return y_pred

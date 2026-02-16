@@ -1,1 +1,6 @@
 .DS_Store
+__pycache__/
+*.pyc
+assignment1_colab/assignment1/cs231n/datasets/cifar-10-batches-py/
+assignment1_colab/assignment1/cs231n/datasets/cifar-10-python.tar.gz
+assignment1_colab/assignment1/cs231n/datasets/wget-log
