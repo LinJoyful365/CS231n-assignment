@@ -39,7 +39,6 @@ def train(model, data_loader, train_optimizer, epoch, epochs, batch_size=32, tem
         _, out_left = model(x_i)
         _, out_right = model(x_j)
         loss = simclr_loss_vectorized(out_left, out_right, temperature, device)
-        #/Volumes/WorkDrive/CS231n/assignment3_colab/assignment3
         ##############################################################################
         #                               END OF YOUR CODE                             #
         ##############################################################################

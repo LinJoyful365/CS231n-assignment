@@ -17,20 +17,20 @@ __pycache__/
 **/datasets/wget-log
 
 # Assignment 1 saved weights
-assignment1_colab/assignment1/cs231n/saved/
+assignment1/assignment1/cs231n/saved/
 
 # Assignment 2 build artifacts
-assignment2_colab/assignment2/cs231n/build/
-assignment2_colab/assignment2/cs231n/im2col_cython.c
+assignment2/assignment2/cs231n/build/
+assignment2/assignment2/cs231n/im2col_cython.c
 *.so
 
 # Assignment 3 large files
-assignment3_colab/assignment3/pretrained_model/
-assignment3_colab/assignment3/cs231n/exp/
-assignment3_colab/assignment3/data/
-assignment3_colab/assignment3/tools/
-assignment3_colab/assignment3/dino.gif
-assignment3_colab/dino_res.mp4
+assignment3/assignment3/pretrained_model/
+assignment3/assignment3/cs231n/exp/
+assignment3/assignment3/data/
+assignment3/assignment3/tools/
+assignment3/assignment3/dino.gif
+assignment3/dino_res.mp4
 
 # Slides (PDFs)
 slides/
