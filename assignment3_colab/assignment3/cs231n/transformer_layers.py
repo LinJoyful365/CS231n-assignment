@@ -36,13 +36,17 @@ class PositionalEncoding(nn.Module):
         # this is what the autograder is expecting. For reference, our solution is #
         # less than 5 lines of code.                                               #
         ############################################################################
-
+        position = torch.arange(0, max_len).unsqueeze(1) # (max_lem,1)
+        div_term = torch.exp(torch.arange(0, embed_dim, 2) * (-math.log(10000.0) / embed_dim)) # (embed_dim/2,)
+        pe[:, :, 0::2] = torch.sin(position * div_term)
+        pe[:, :, 1::2] = torch.cos(position * div_term)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
 
         # Make sure the positional encodings will be saved with the model
         # parameters (mostly for completeness).
+        # 需要随模型一起移动、一起保存，但不训练更新”的张量，使用register_buffer注册
         self.register_buffer('pe', pe)
 
     def forward(self, x):
@@ -64,7 +68,8 @@ class PositionalEncoding(nn.Module):
         # appropriate ones to the input sequence. Don't forget to apply dropout    #
         # afterward. This should only take a few lines of code.                    #
         ############################################################################
-
+        output = x +self.pe[:, :S, :]
+        output = self.dropout(output)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -72,93 +77,55 @@ class PositionalEncoding(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    """
-    A model layer which implements a simplified version of masked attention, as
-    introduced by "Attention Is All You Need" (https://arxiv.org/abs/1706.03762).
-
-    Usage:
-      attn = MultiHeadAttention(embed_dim, num_heads=2)
-
-      # self-attention
-      data = torch.randn(batch_size, sequence_length, embed_dim)
-      self_attn_output = attn(query=data, key=data, value=data)
-
-      # attention using two inputs
-      other_data = torch.randn(batch_size, sequence_length, embed_dim)
-      attn_output = attn(query=data, key=other_data, value=other_data)
-    """
-
     def __init__(self, embed_dim, num_heads, dropout=0.1):
-        """
-        Construct a new MultiHeadAttention layer.
-
-        Inputs:
-         - embed_dim: Dimension of the token embedding
-         - num_heads: Number of attention heads
-         - dropout: Dropout probability
-        """
         super().__init__()
-        assert embed_dim % num_heads == 0
+        assert embed_dim % num_heads == 0, "embed_dim must be divisible by num_heads"
 
-        # We will initialize these layers for you, since swapping the ordering
-        # would affect the random number generation (and therefore your exact
-        # outputs relative to the autograder). Note that the layers use a bias
-        # term, but this isn't strictly necessary (and varies by
-        # implementation).
-        self.key = nn.Linear(embed_dim, embed_dim)
+        self.embed_dim = embed_dim
+        self.n_head = num_heads
+        self.head_dim = embed_dim // num_heads
+        self.scale = self.head_dim ** -0.5
+
         self.query = nn.Linear(embed_dim, embed_dim)
+        self.key = nn.Linear(embed_dim, embed_dim)
         self.value = nn.Linear(embed_dim, embed_dim)
         self.proj = nn.Linear(embed_dim, embed_dim)
-        
+
         self.attn_drop = nn.Dropout(dropout)
 
-        self.n_head = num_heads
-        self.emd_dim = embed_dim
-        self.head_dim = self.emd_dim // self.n_head
-
     def forward(self, query, key, value, attn_mask=None):
-        """
-        Calculate the masked attention output for the provided data, computing
-        all attention heads in parallel.
-
-        In the shape definitions below, N is the batch size, S is the source
-        sequence length, T is the target sequence length, and E is the embedding
-        dimension.
-
-        Inputs:
-        - query: Input data to be used as the query, of shape (N, S, E)
-        - key: Input data to be used as the key, of shape (N, T, E)
-        - value: Input data to be used as the value, of shape (N, T, E)
-        - attn_mask: Array of shape (S, T) where mask[i,j] == 0 indicates token
-          i in the source should not influence token j in the target.
-
-        Returns:
-        - output: Tensor of shape (N, S, E) giving the weighted combination of
-          data in value according to the attention weights calculated using key
-          and query.
-        """
         N, S, E = query.shape
-        N, T, E = value.shape
-        # Create a placeholder, to be overwritten by your code below.
-        output = torch.empty((N, S, E))
-        ############################################################################
-        # TODO: Implement multiheaded attention using the equations given in       #
-        # Transformer_Captioning.ipynb.                                            #
-        # A few hints:                                                             #
-        #  1) You'll want to split your shape from (N, T, E) into (N, T, H, E/H),  #
-        #     where H is the number of heads.                                      #
-        #  2) The function torch.matmul allows you to do a batched matrix multiply.#
-        #     For example, you can do (N, H, T, E/H) by (N, H, E/H, T) to yield a  #
-        #     shape (N, H, T, T). For more examples, see                           #
-        #     https://pytorch.org/docs/stable/generated/torch.matmul.html          #
-        #  3) For applying attn_mask, think how the scores should be modified to   #
-        #     prevent a value from influencing output. Specifically, the PyTorch   #
-        #     function masked_fill may come in handy.                              #
-        ############################################################################
+        _, T, _ = key.shape
 
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
+        q = self.query(query).view(N, S, self.n_head, self.head_dim).transpose(1, 2)  # (N,H,S,D)
+        k = self.key(key).view(N, T, self.n_head, self.head_dim).transpose(1, 2)      # (N,H,T,D)
+        v = self.value(value).view(N, T, self.n_head, self.head_dim).transpose(1, 2)  # (N,H,T,D)
+
+        scores = torch.matmul(q, k.transpose(-2, -1)) * self.scale  # (N,H,S,T)
+
+        if attn_mask is not None:
+            # bool mask: True=keep, False=mask out
+            if attn_mask.dtype == torch.bool:
+                mask = attn_mask
+                if mask.dim() == 2:      # (S,T)
+                    mask = mask.view(1, 1, S, T)
+                elif mask.dim() == 3:    # (N,S,T)
+                    mask = mask.unsqueeze(1)
+                elif mask.dim() == 4:    # (N,H,S,T)
+                    pass
+                else:
+                    raise ValueError("attn_mask shape must be (S,T), (N,S,T), or (N,H,S,T)")
+                scores = scores.masked_fill(~mask.to(scores.device), torch.finfo(scores.dtype).min)
+            else:
+                # additive mask, e.g. 0 for keep and -inf for mask
+                scores = scores + attn_mask.to(scores.device)
+
+        attn = F.softmax(scores, dim=-1)
+        attn = self.attn_drop(attn)
+
+        output = torch.matmul(attn, v)  # (N,H,S,D)
+        output = output.transpose(1, 2).contiguous().view(N, S, E)
+        output = self.proj(output)
         return output
 
 
@@ -252,6 +219,19 @@ class TransformerDecoderLayer(nn.Module):
         # memory, and (2) the feedforward block. Each block should follow the      #
         # same structure as self-attention implemented just above.                 #
         ############################################################################
+        # Cross-attention block
+        shortcut = tgt
+        tgt = self.cross_attn(query=tgt, key=memory, value=memory)
+        tgt = self.dropout_cross(tgt)
+        tgt = tgt + shortcut
+        tgt = self.norm_cross(tgt) #（N, T, D）
+
+        # Feedforward block
+        shortcut = tgt
+        tgt = self.ffn(tgt)
+        tgt = self.dropout_ffn(tgt)
+        tgt = tgt + shortcut
+        tgt = self.norm_ffn(tgt)
 
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -311,7 +291,11 @@ class PatchEmbedding(nn.Module):
         # step. Once the patches are flattened, embed them into latent vectors     #
         # using the projection layer.                                              #
         ############################################################################
+        x = x.reshape(N, C, H // self.patch_size,self.patch_size, W // self.patch_size, self.patch_size) #(N,C,H//p,p,N//p,p)
+        x = x.permute(0, 2, 4, 1, 3, 5) # (N, H//p, W//p, C, p, p)
+        x = x.reshape(N, self.num_patches, self.patch_dim) # (N, num_patches, patch_dim)
 
+        out = self.proj(x) # (N, num_patches, embed_dim)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -359,7 +343,12 @@ class TransformerEncoderLayer(nn.Module):
         # TODO: Implement the encoder layer by applying self-attention followed    #
         # by a feedforward block. This code will be very similar to decoder layer. #
         ############################################################################
-
+        N, S, D = src.shape
+        shortcut = src
+        src = self.self_attn(src, src, src,attn_mask=src_mask)  # Apply self-attention
+        src = self.dropout_self(src)
+        src = src +shortcut
+        src = self.norm_self(src)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################

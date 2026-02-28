@@ -43,7 +43,8 @@ def rnn_step_forward(x, prev_h, Wx, Wh, b):
     ##############################################################################
     # TODO: Implement a single forward step for the vanilla RNN.                 #
     ##############################################################################
-    # 
+    a_t = x @ Wx + prev_h @ Wh + b
+    next_h = torch.tanh(a_t)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -73,7 +74,19 @@ def rnn_forward(x, h0, Wx, Wh, b):
     # input data. You should use the rnn_step_forward function that you defined  #
     # above. You can use a for loop to help compute the forward pass.            #
     ##############################################################################
-    # 
+    for t in range(x.shape[1]):
+        # 先取出当前时间步前一个时间的隐藏状态，如果是第一个时间步，则使用初始隐藏状态h0
+        if t == 0:
+            prev_h = h0
+        else:
+            prev_h = h[:,t-1,:]
+        # 计算当前时间步的隐藏状态
+        next_h = rnn_step_forward(x[:,t,:], prev_h, Wx, Wh, b)
+        # 把当前时间步的隐藏状态拼接回去
+        if t == 0:
+            h = next_h.unsqueeze(1) # 产生一个新的维度
+        else:
+            h = torch.cat((h, next_h.unsqueeze(1)), dim=1)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -98,10 +111,10 @@ def word_embedding_forward(x, W):
     out = None
     ##############################################################################
     # TODO: Implement the forward pass for word embeddings.                      #
-    #                                                                            #
+                                                                              #
     # HINT: This can be done in one line using Pytorch's array indexing.         #
     ##############################################################################
-    # 
+    out = W[x] #对 x 中的每个元素，取 W 的一整行，得到一个新的数组，形状为 (N, T, D)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -228,6 +241,7 @@ def temporal_softmax_loss(x, y, mask, verbose=False):
     mask_flat = mask.reshape(N * T)
 
     loss = torch.nn.functional.cross_entropy(x_flat, y_flat, reduction='none')
+    # 这里loss返回的本质还是一个一维的向量，长度为 N*T，每个元素对应一个样本的损失值。我们需要根据 mask_flat 来过滤掉那些不应该贡献损失的样本。
     loss = loss * mask_flat.float()
     loss = loss.sum() / N
 

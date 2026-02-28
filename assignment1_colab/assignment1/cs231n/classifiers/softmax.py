@@ -32,12 +32,10 @@ def softmax_loss_naive(W, X, y, reg):
     # compute the loss and the gradient
     num_train = X.shape[0]
     for i in range(num_train):
-        scores = X[i].dot(W)
-
-        # compute the probabilities in numerically stable way
+        # 计算每个样本的得分，减去最大得分以提高数值稳定性
+        scores = X[i].dot(W) # 1*C
         scores -= np.max(scores)
-        p = np.exp(scores)
-        p /= p.sum()  # normalize
+        p = np.exp(scores) / np.sum(np.exp(scores)) # 1*C,softmax概率分布
         logp = np.log(p)
 
         loss -= logp[y[i]]  # negative log probability is the loss
@@ -45,22 +43,13 @@ def softmax_loss_naive(W, X, y, reg):
         for class_idx in range(W.shape[1]):
             grad_contrib = p[class_idx] * X[i]
             if class_idx == y[i]:
-                grad_contrib -= X[i]
+                grad_contrib = (p[class_idx] - 1) * X[i]
+                # 假如是正确的类别则对应另一个梯度公式
             dW[:, class_idx] += grad_contrib
 
 
     # normalized hinge loss plus regularization
     loss = loss / num_train + reg * np.sum(W * W)
-
-    #############################################################################
-    # TODO:                                                                     #
-    # Compute the gradient of the loss function and store it dW.                #
-    # Rather that first computing the loss and then computing the derivative,   #
-    # it may be simpler to compute the derivative at the same time that the     #
-    # loss is being computed. As a result you may need to modify some of the    #
-    # code above to compute the gradient.                                       #
-    #############################################################################
-
     dW = dW / num_train + 2.0 * reg * W
     return loss, dW
 
@@ -74,17 +63,19 @@ def softmax_loss_vectorized(W, X, y, reg):
     # Initialize the loss and gradient to zero.
     loss = 0.0
     dW = np.zeros_like(W)
-
-
-    score_matrix = X.dot(W)
-    score_matrix -= np.max(score_matrix, axis=1, keepdims=True)  # 稳定性优先
-    exp_scores = np.exp(score_matrix)
-    prob_matrix = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
-
     num_train = X.shape[0]
-    correct_log_probs = -np.log(prob_matrix[np.arange(num_train), y])
-    loss = np.mean(correct_log_probs) + reg * np.sum(W * W)
+    scores = X.dot(W) #直接进行矩阵乘法，不使用循环进行计算
+    scores -= np.max(scores,axis=1,keepdims=True)
 
-    prob_matrix[np.arange(num_train), y] -= 1.0
-    dW = X.T.dot(prob_matrix) / num_train + 2.0 * reg * W
+    exp = np.exp(scores)
+    p = exp / np.sum(exp,axis=1,keepdims=True)
+    logp = np.log(p)
+    # 在logp中使用np.arange和y配对，直接取出对应正确类别的概率，然后求和得到总的损失，最后除以样本数得到平均损失
+    loss = -np.sum(logp[np.arange(num_train),y]) / num_train + reg * np.sum(W * W)
+
+    # 计算梯度，直接在p中修改正确类别的概率，然后使用高效的矩阵乘法
+    dscores = p
+    dscores[np.arange(num_train),y] -= 1 # 按索引操作
+    dW = X.T.dot(dscores) / num_train + 2.0 * reg * W
+
     return loss, dW

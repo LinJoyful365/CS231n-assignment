@@ -1,6 +1,44 @@
+# OS
 .DS_Store
+__MACOSX/
+
+# Python
+.ipynb_checkpoints/
 __pycache__/
 *.pyc
-assignment1_colab/assignment1/cs231n/datasets/cifar-10-batches-py/
-assignment1_colab/assignment1/cs231n/datasets/cifar-10-python.tar.gz
-assignment1_colab/assignment1/cs231n/datasets/wget-log
+*.pyo
+
+# Datasets (all assignments)
+**/datasets/cifar-10-batches-py/
+**/datasets/cifar-10-python.tar.gz
+**/datasets/coco_captioning/
+**/datasets/emoji_data.npz
+**/datasets/text_embeddings.pt
+**/datasets/wget-log
+
+# Assignment 1 saved weights
+assignment1_colab/assignment1/cs231n/saved/
+
+# Assignment 2 build artifacts
+assignment2_colab/assignment2/cs231n/build/
+assignment2_colab/assignment2/cs231n/im2col_cython.c
+*.so
+
+# Assignment 3 large files
+assignment3_colab/assignment3/pretrained_model/
+assignment3_colab/assignment3/cs231n/exp/
+assignment3_colab/assignment3/data/
+assignment3_colab/assignment3/tools/
+assignment3_colab/assignment3/dino.gif
+assignment3_colab/dino_res.mp4
+
+# Slides (PDFs)
+slides/
+
+# General
+*.tar.gz
+*.h5
+*.npy
+*.npz
+*.pth
+*.pt

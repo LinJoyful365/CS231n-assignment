@@ -10,9 +10,11 @@ class Model(nn.Module):
 
         self.f = []
         for name, module in resnet50().named_children():
+            # 修改卷积层的参数，因为输入是32x32
             if name == 'conv1':
                 module = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
             if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
+                #把每个nn.Module添加到self.f中,最后用nn.Seuquential串起来
                 self.f.append(module)
         # encoder
         self.f = nn.Sequential(*self.f)
@@ -25,3 +27,4 @@ class Model(nn.Module):
         feature = torch.flatten(x, start_dim=1)
         out = self.g(feature)
         return F.normalize(feature, dim=-1), F.normalize(out, dim=-1)
+    # features用来进一步完成down stream task，out用来计算contrastive loss

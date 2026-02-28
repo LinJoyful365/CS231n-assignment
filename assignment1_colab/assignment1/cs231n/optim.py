@@ -102,14 +102,8 @@ def rmsprop(w, dw, config=None):
     # in the next_w variable. Don't forget to update cache value stored in    #
     # config['cache'].                                                        #
     ###########################################################################
-    cache = config["cache"]
-    decay_rate = config["decay_rate"]
-    epsilon = config["epsilon"]
-    learning_rate = config["learning_rate"]
-
-    cache = decay_rate * cache + (1.0 - decay_rate) * (dw * dw)
-    next_w = w - learning_rate * dw / (np.sqrt(cache) + epsilon)
-    config["cache"] = cache
+    config["cache"] = config["decay_rate"] * config["cache"] + (1 - config["decay_rate"]) * dw**2
+    next_w = w - config["learning_rate"] * dw / (np.sqrt(config["cache"]) + config["epsilon"])
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -151,23 +145,12 @@ def adam(w, dw, config=None):
     # using it in any calculations.                                           #
     ###########################################################################
     config["t"] += 1
-    beta1 = config["beta1"]
-    beta2 = config["beta2"]
-    epsilon = config["epsilon"]
-    learning_rate = config["learning_rate"]
+    config["m"] = config["beta1"] * config["m"] + (1 - config["beta1"]) * dw
+    config["v"] = config["beta2"] * config["v"] + (1 - config["beta2"]) * dw**2
+    m_unbiased = config["m"] / (1 - config["beta1"] ** config["t"])
+    v_unbiased = config["v"] / (1 - config["beta2"] ** config["t"])
+    next_w = w - config["learning_rate"] * m_unbiased / (np.sqrt(v_unbiased) + config["epsilon"])
 
-    m = config["m"]
-    v = config["v"]
-    m = beta1 * m + (1.0 - beta1) * dw
-    v = beta2 * v + (1.0 - beta2) * (dw * dw)
-
-    t = config["t"]
-    m_hat = m / (1.0 - beta1 ** t)
-    v_hat = v / (1.0 - beta2 ** t)
-    next_w = w - learning_rate * m_hat / (np.sqrt(v_hat) + epsilon)
-
-    config["m"] = m
-    config["v"] = v
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################

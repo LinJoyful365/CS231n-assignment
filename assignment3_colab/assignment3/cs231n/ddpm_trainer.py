@@ -80,6 +80,17 @@ class Trainer(object):
     def load(self, milestone):
 
         ckpt_path = os.path.join(self.results_folder, f"model-{milestone}.pt")
+        if not os.path.exists(ckpt_path):
+            # For assignment notebook convenience, auto-download the provided
+            # pretrained checkpoint when requesting milestone 70000.
+            if milestone == 70000:
+                self.download_pretrained()
+            if not os.path.exists(ckpt_path):
+                raise FileNotFoundError(
+                    f"Checkpoint not found: {ckpt_path}. "
+                    "Set `results_folder` to a valid local path and/or call "
+                    "`trainer.download_pretrained()` before `trainer.load(70000)`."
+                )
         print(f"loading model from {ckpt_path}.")
         data = torch.load(ckpt_path, map_location=self.device, weights_only=True)
 

@@ -101,14 +101,23 @@ class KNearestNeighbor(object):
 
         Input / Output: Same as compute_distances_two_loops
         """
-        num_test = X.shape[0]
-        num_train = self.X_train.shape[0]
-        dists = np.zeros((num_test, num_train))
-        #这里我们使用numpy的广播机制来计算
-        X_train_shape = self.X_train.reshape(1, num_train, -1) #将训练数据重塑为（1，num_train，D）的形状
-        X_shape = X.reshape(num_test, 1, -1) #将测试数据重塑为（num_test，1，D）的形状
-        delta_matrix = X_train_shape - X_shape #利用广播机制计算差值矩阵，得到一个（num_test，num_train，D）的矩阵
-        dists = np.sqrt(np.sum(delta_matrix * delta_matrix,axis=2)) #在最后一个维度上求和，得到一个（num_test，num_train）的矩阵
+        #在真实的计算情况下，拓宽到3D矩阵会导致内存不足，计算缓慢
+        # num_test = X.shape[0]
+        # num_train = self.X_train.shape[0]
+        # dists = np.zeros((num_test, num_train))
+        # #这里我们使用numpy的广播机制来计算
+        # X_train_shape = self.X_train.reshape(1, num_train, -1) #将训练数据重塑为（1，num_train，D）的形状
+        # X_shape = X.reshape(num_test, 1, -1) #将测试数据重塑为（num_test，1，D）的形状
+        # delta_matrix = X_train_shape - X_shape #利用广播机制计算差值矩阵，得到一个（num_test，num_train，D）的矩阵
+        # dists = np.sqrt(np.sum(delta_matrix * delta_matrix,axis=2)) #在最后一个维度上求和，得到一个（num_test，num_train）的矩阵
+        # return dists
+
+        #这里使用公式||a-b||^2 = ||a||^2 + ||b||^2 - 2a·b
+        test_sum_square = np.sum(X * X, axis=1) #每行的平方和，得到一个（num_test，）的向量
+        train_sum_square = np.sum(self.X_train * self.X_train, axis=1) #得到一个（num_train,)的向量        
+        inner_product = X.dot(self.X_train.T)
+        square_dists = test_sum_square[:,np.newaxis] + train_sum_square.reshape(1, -1) - 2 * inner_product #根据公式计算平方距离
+        dists = np.sqrt(square_dists) #开方得到距离
         return dists
 
     def predict_labels(self, dists, k=1):

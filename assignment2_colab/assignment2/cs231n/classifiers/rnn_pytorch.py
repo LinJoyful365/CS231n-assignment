@@ -98,10 +98,15 @@ class CaptioningRNN:
         # by one relative to each other because the RNN should produce word (t+1)
         # after receiving word t. The first element of captions_in will be the START
         # token, and the first element of captions_out will be the first word.
+
+        # 含义是做“错位一位的预测”：
+        # RNN 在时间步 t 输入的是 captions_in[:, t]（当前词）
+        # 目标要预测的是 captions_out[:, t]（下一个词）
         captions_in = captions[:, :-1]
         captions_out = captions[:, 1:]
 
         # You'll need this
+        # 由于可能会有padding，所以我们需要一个mask来标注哪些位置有效哪些无效
         mask = captions_out != self._null
 
         # Weight and bias for the affine transform from image features to initial
@@ -138,7 +143,14 @@ class CaptioningRNN:
         #                                                                          #
         # You also don't have to implement the backward pass.                      #
         ############################################################################
-        # 
+        h0 = features @ W_proj + b_proj
+        x = W_embed[captions_in] # (N, T, W)
+        if self.cell_type == 'rnn':
+            h = rnn_forward(x, h0, Wx, Wh, b) # (N, T, H)
+        else:
+            h, _ = lstm_forward(x, h0, Wx, Wh, b) # (N, T, H)
+        scores = h @ W_vocab + b_vocab # (N, T, V)
+        loss = temporal_softmax_loss(scores, captions_out, mask)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -202,7 +214,15 @@ class CaptioningRNN:
         # NOTE: we are still working over minibatches in this function. Also if   #
         # you are using an LSTM, initialize the first cell state to zeros.        #
         ###########################################################################
-        # 
+        h = features @ W_proj + b_proj
+        prev_word = self._start * torch.ones((N,), dtype=torch.long)
+        if self.cell_type == 'rnn':
+            for t in range(max_length):
+                x = W_embed[prev_word] # (N, W)
+                h = rnn_step_forward(x, h, Wx, Wh, b)
+                scores = h @ W_vocab + b_vocab # (N, V)
+                captions[:, t] = torch.argmax(scores, dim=1)
+                prev_word = captions[:, t]
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################

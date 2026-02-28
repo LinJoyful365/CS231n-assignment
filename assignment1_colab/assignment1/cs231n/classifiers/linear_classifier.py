@@ -43,7 +43,7 @@ class LinearClassifier(object):
         Outputs:
         A list containing the value of the loss function at each training iteration.
         """
-        num_train, dim = X.shape
+        num_train, dim = X.shape #（N，D）
         num_classes = (
             np.max(y) + 1
         )  # assume y takes values 0...K-1 where K is number of classes
@@ -56,19 +56,7 @@ class LinearClassifier(object):
         for it in range(num_iters):
             X_batch = None
             y_batch = None
-
-            #########################################################################
-            # TODO:                                                                 #
-            # Sample batch_size elements from the training data and their           #
-            # corresponding labels to use in this round of gradient descent.        #
-            # Store the data in X_batch and their corresponding labels in           #
-            # y_batch; after sampling X_batch should have shape (batch_size, dim)   #
-            # and y_batch should have shape (batch_size,)                           #
-            #                                                                       #
-            # Hint: Use np.random.choice to generate indices. Sampling with         #
-            # replacement is faster than sampling without replacement.              #
-            #########################################################################
-            batch_indices = np.random.choice(num_train, batch_size, replace=True)
+            batch_indices = np.random.choice(a=num_train, size=batch_size, replace=True)
             X_batch = X[batch_indices]
             y_batch = y[batch_indices]
 
@@ -76,11 +64,6 @@ class LinearClassifier(object):
             loss, grad = self.loss(X_batch, y_batch, reg)
             loss_history.append(loss)
 
-            # perform parameter update
-            #########################################################################
-            # TODO:                                                                 #
-            # Update the weights using the gradient and the learning rate.          #
-            #########################################################################
             self.W -= learning_rate * grad
 
             if verbose and it % 100 == 0:
