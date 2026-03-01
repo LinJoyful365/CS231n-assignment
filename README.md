@@ -14,14 +14,16 @@ CS231n/
 │   └── assignment2/
 ├── assignment3/
 │   └── assignment3/
-└── slides/
+├── cs231n_blog.pdf
+└── images/
 ```
 
 说明：
 - `assignment1/assignment1`：A1（KNN、SVM/Softmax、两层网络、全连接网络、特征工程）
 - `assignment2/assignment2`：A2（BatchNorm、Dropout、CNN、PyTorch、RNN Captioning）
 - `assignment3/assignment3`：A3（Transformer Captioning、Self-Supervised Learning、DDPM、CLIP/DINO）
-- `slides/`：课程相关讲义
+- `cs231n_blog.pdf`：课程笔记 PDF（从线性分类器到扩散模型）
+- `images/`：笔记中使用的 slides / 插图资源
 
 ## 目录命名说明
 
@@ -136,12 +138,17 @@ bash cs231n/datasets/get_coco_dataset.sh
 bash collectSubmission.sh
 ```
 
-## 笔记与复盘（持续更新）
+## 笔记与复盘
 
-后续将补充：
-- 每个 assignment 的核心实现思路
-- 常见报错与排查记录
-- 训练结果对比与经验总结
+当前已提交：
+- `cs231n_blog.pdf`（完整课程笔记）
+- `images/CNN.png`
+- `images/ReLUvsGELU.png`
+- `images/cnn.jpeg`
+- `images/ddpm.png`
+- `images/im2col.png`
+- `images/transformer.png`
+- `images/vit.jpg`
 
 ## 其他说明
 
